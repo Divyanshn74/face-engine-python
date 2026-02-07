@@ -150,7 +150,7 @@ async def recognize_face(file: UploadFile = File(...)):
 - Vivek Pushptode  
 - Neha Rathor  
 
-Java backend repository: *(to be linked once public)*
+Java backend repository: https://github.com/Divyanshn74/FaceRecognitionJava
 
 ---
 
