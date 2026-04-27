@@ -1,7 +1,15 @@
 Flask==3.0.3
 flask-cors==4.0.0
 gunicorn==21.2.0
-deepface==0.0.92
-tensorflow==2.12.0
-opencv-python-headless==4.8.1.78
-numpy==1.23.5
+insightface>=0.7.3
+onnxruntime>=1.16.0
+opencv-python-headless>=4.9.0
+numpy>=1.24.4
+mediapipe==0.10.5
+
+# =============================================================================
+# GPU Acceleration (install ONLY if IS_GPU_NVIDIA=true)
+# =============================================================================
+# pip install onnxruntime-gpu    (replaces onnxruntime — provides CUDAExecutionProvider)
+# pip install faiss-gpu          (replaces faiss-cpu — provides GPU-accelerated search)
+# Note: Requires NVIDIA GPU + CUDA toolkit installed on the system
