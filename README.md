@@ -1,30 +1,16 @@
-# Face Engine API (Python)
+# 🧠 Face Engine API (Python)
 
-This repository provides the **face recognition engine** for the Face Recognition Attendance System.  
-It is a lightweight **FastAPI** service that performs face detection, feature extraction, and recognition using **OpenCV** and **NumPy**.  
-The Java Spring Boot backend communicates with this API to register and recognize student faces.
+> The dedicated **AI Microservice** for the Face Recognition Attendance System. This Python backend handles real-time face detection, liveness verification, and sub-millisecond vector similarity search.
 
 ---
 
 ## 🧩 Overview
 
-The **Face Engine API** exposes REST endpoints to:
-- Register a student's face (store facial encodings).
-- Recognize a face by comparing it with existing encodings.
-- Return results (match / not match) to the Java backend.
-
----
-
-## 🏗️ Project Structure
-
-```
-face-engine-python/
-├── app.py             # Main FastAPI app
-├── requirements.txt   # Dependencies list
-├── Procfile           # For deployment (e.g., Heroku/Render)
-├── runtime.txt        # Python runtime version
-└── (data storage / encodings as implemented in app.py)
-```
+The **Face Engine API** is a highly optimized **Flask** service that acts as the core biometric engine for the Java Spring Boot backend. 
+It leverages state-of-the-art deep learning models to:
+1. **Extract 512-dimensional facial embeddings** from images.
+2. **Verify Liveness** by analyzing sequential frames for blink detection (preventing photo spoofing).
+3. **Perform instantaneous face matching** against thousands of registered students using a loaded FAISS index.
 
 ---
 
@@ -32,11 +18,33 @@ face-engine-python/
 
 | Component | Technology |
 |------------|-------------|
-| **Framework** | FastAPI |
-| **Face Recognition** | OpenCV |
-| **Language** | Python 3.10+ |
-| **Libraries** | NumPy, uvicorn |
-| **Deployment** | Local / Render / Railway / Heroku |
+| **Framework** | Python 3.11, Flask |
+| **Face Recognition** | InsightFace (ArcFace `buffalo_l`) |
+| **Vector Search** | FAISS (Facebook AI Similarity Search) |
+| **Liveness Detection** | MediaPipe FaceMesh (Eye Aspect Ratio tracking) |
+| **Image Processing** | OpenCV, NumPy |
+| **Database Connector** | MySQL Connector (direct FAISS sync) |
+| **Acceleration** | Optional NVIDIA CUDA GPU support |
+
+---
+
+## 🏗️ Project Structure
+
+```
+face-engine-python/
+├── app.py             # Main Flask AI Engine (handles routes, FAISS, InsightFace)
+├── requirements.txt   # Python dependencies
+├── Procfile           # Configuration for cloud deployments (e.g., Render)
+└── runtime.txt        # Specifies Python version for cloud buildpacks
+```
+
+---
+
+## 🔒 Security
+
+This microservice is strictly isolated and **must not be exposed to the public internet** without protection.
+- **API Key Authentication:** All sensitive endpoints require an `X-API-Key` header matching the `FACE_ENGINE_API_KEY` environment variable.
+- **CORS:** Cross-Origin Resource Sharing is strictly controlled via the `ALLOWED_ORIGINS` environment variable.
 
 ---
 
@@ -48,112 +56,68 @@ git clone https://github.com/Divyanshn74/face-engine-python.git
 cd face-engine-python
 ```
 
-### 2️⃣ Install dependencies
-It’s recommended to use a virtual environment:
+### 2️⃣ Configure Environment Variables
+Set the following environment variables (or rely on the defaults if running locally alongside the Java app):
 
+```env
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=YOUR_MYSQL_PASSWORD
+DB_NAME=attendance_db
+FACE_ENGINE_API_KEY=default-secret-key
+IS_GPU_NVIDIA=false # Set to 'true' if you have CUDA drivers installed
+```
+
+### 3️⃣ Install dependencies
+*Note: We highly recommend using a virtual environment (`venv` or `conda`).*
 ```bash
 python -m venv venv
-source venv/bin/activate   # (on Windows: venv\Scripts\activate)
+source venv/bin/activate   # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3️⃣ Run the API
+### 4️⃣ Run the API
 ```bash
 python app.py
 ```
-
-By default, the API will run on port **5001**:
-```
-http://127.0.0.1:5001
-```
-
-You can access the built-in documentation at:
-```
-http://127.0.0.1:5001/docs
-```
+The API will initialize the models, build the FAISS index from the MySQL database, and run on: **http://127.0.0.1:5001**
 
 ---
 
-## 🔗 Java Backend Integration
+## 🔌 Core API Endpoints
 
-Your **Java Spring Boot** application should reference this API in its `application.properties` file:
-
-```properties
-face.engine.url=http://127.0.0.1:5001
-```
-
-The Java backend will send image data to this API via endpoints like:
+*Note: All POST endpoints require the `X-API-Key` header.*
 
 | Endpoint | Method | Description |
 |-----------|---------|-------------|
-| `/register-face` | `POST` | Save face encoding for a student |
-| `/recognize` | `POST` | Recognize and match an uploaded face |
+| `/secure_identify` | `POST` | Evaluates liveness across multiple frames and identifies the face via FAISS. |
+| `/get_embedding` | `POST` | Extracts and returns the 512-d ArcFace embedding from a single image. |
+| `/identify` | `POST` | Performs a pure FAISS nearest-neighbor search (no liveness check). |
+| `/compare` | `POST` | Compares a known embedding against a live image using cosine distance. |
+| `/liveness_check` | `POST` | Analyzes a sequence of frames for blink detection (EAR tracking). |
+| `/rebuild_index` | `POST` | Forces the engine to re-query the MySQL DB and rebuild the FAISS index. |
+| `/gpu_status` | `GET` | Returns hardware acceleration diagnostic info. |
+| `/health` | `GET` | Standard health check endpoint. |
 
 ---
 
-## 🌐 Deploying Online
+## 🌐 Integration with Java Backend
 
-You can host this API on any Python-friendly platform such as:
+The main [Java Spring Boot Repository](https://github.com/Divyanshn74/face-recog-regular) communicates with this engine. In the Java app's `application.properties` or `.env` file, ensure these variables are mapped:
 
-### 🟣 Render
-1. Create a new Web Service.  
-2. Connect your GitHub repo (`Divyanshn74/face-engine-python`).  
-3. Use the following settings:
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `python app.py`
-4. After deployment, note your service URL (e.g. `https://face-engine.onrender.com`).
-
-### 🟢 Railway
-1. Connect your GitHub repository.  
-2. Railway automatically detects and builds FastAPI projects.  
-3. After deploy, get your public URL.
-
-### 🔵 Heroku (legacy method)
-1. Install Heroku CLI and log in.  
-2. Run:
-   ```bash
-   heroku create face-engine-api
-   git push heroku main
-   ```
-3. Your API will be live at something like:  
-   `https://face-engine-api.herokuapp.com`
-
-Update your Java backend with the new public URL.
-
----
-
-## 🧠 API Example (FastAPI)
-
-```python
-from fastapi import FastAPI, File, UploadFile
-import cv2, numpy as np
-
-app = FastAPI()
-
-@app.post("/recognize")
-async def recognize_face(file: UploadFile = File(...)):
-    image = np.frombuffer(await file.read(), np.uint8)
-    frame = cv2.imdecode(image, cv2.IMREAD_COLOR)
-    # TODO: Implement recognition logic here
-    return {"match": True, "student_id": 1}
+```properties
+FACE_ENGINE_URL=http://localhost:5001
+FACE_ENGINE_API_KEY=default-secret-key
 ```
 
 ---
 
-## 🧑‍💻 Authors & Contributors
+## 🧑‍💻 Author
 
-**Project Developed By:**  
-- 👨‍💻 **Divyansh Namdev** (Divyanshn74)
-
-**Team Members:**  
-- Gopal Kumar Saw  
-- Vivek Pushptode  
-- Neha Rathor  
-
-Java backend repository: *(to be linked once public)*
+**Divyansh Namdev** ([Divyanshn74](https://github.com/Divyanshn74))
 
 ---
 
-## 🪪 License
+## 📄 License
 
-This project is licensed under the **MIT License** – see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
